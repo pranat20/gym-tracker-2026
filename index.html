@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 Iron Legend Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
+        
+        body {
+            background-color: #050505;
+            color: #e5e7eb;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card:active {
+            transform: scale(0.95);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        @media (min-width: 768px) {
+            .glass-card:hover {
+                border-color: #10b981;
+                background: rgba(16, 185, 129, 0.05);
+            }
+        }
+
+        .day-checkbox {
+            appearance: none;
+            width: 28px;
+            height: 28px;
+            border: 2px solid #374151;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .day-checkbox:checked {
+            background-color: #10b981;
+            border-color: #10b981;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .day-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: black;
+            font-weight: 900;
+            font-size: 16px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Hide Scrollbar for clean mobile look */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+        .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; font-weight: 600; }
+        .stat-value { font-size: 1.25rem; font-weight: 900; color: #10b981; line-height: 1; }
+
+        /* Print/PDF specific overrides */
+        #pdf-content { background: white !important; color: black !important; padding: 20px; }
+        .pdf-only { display: none; }
+    </style>
+</head>
+<body class="min-h-screen pb-20 overflow-x-hidden">
+
+    <!-- Hero Header -->
+    <section class="relative h-[350px] md:h-[450px] w-full overflow-hidden flex items-center justify-center">
+        <div class="absolute inset-0 z-0">
+            <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop" 
+                 alt="Gym Motivation" 
+                 class="w-full h-full object-cover opacity-30 scale-110">
+        </div>
+        
+        <canvas id="heroCanvas" class="absolute inset-0 z-10 pointer-events-none opacity-50"></canvas>
+        
+        <div class="relative z-20 text-center px-6 w-full max-w-4xl">
+            <h2 class="stat-label mb-2 text-emerald-400 font-bold tracking-[0.4em]">Iron Legacy 2026</h2>
+            <h1 id="motivationQuote" class="text-3xl md:text-6xl font-black italic uppercase tracking-tighter leading-none mb-6 text-white drop-shadow-2xl transition-opacity duration-500">
+                "NO EXCUSES"
+            </h1>
+            
+            <div class="flex flex-col sm:flex-row gap-3 justify-center items-center mt-4">
+                <button onclick="exportResultPDF()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold uppercase tracking-widest px-8 py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Export Results PDF
+                </button>
+            </div>
+        </div>
+        
+        <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#050505] to-transparent z-15"></div>
+    </section>
+
+    <!-- Main Content -->
+    <div id="capture-area" class="container mx-auto px-4 -mt-12 relative z-30">
+        
+        <!-- Mobile Friendly Progress Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+            <div class="glass-card p-5 rounded-2xl flex flex-col items-center justify-center text-center">
+                <span class="stat-label">Total Sessions</span>
+                <span id="statDays" class="stat-value mt-1">0</span>
+            </div>
+            <div class="glass-card p-5 rounded-2xl flex flex-col items-center justify-center text-center">
+                <span class="stat-label">Weeks Completed</span>
+                <span id="statWeeks" class="stat-value mt-1">0.0</span>
+            </div>
+            <div class="glass-card p-5 rounded-2xl flex flex-col items-center justify-center text-center">
+                <span class="stat-label">Consistency</span>
+                <span id="statMonths" class="stat-value mt-1">0.0</span>
+            </div>
+            <div class="glass-card p-5 rounded-2xl flex flex-col items-center justify-center text-center">
+                <span class="stat-label">2026 Target</span>
+                <span id="statYear" class="stat-value mt-1">0%</span>
+            </div>
+        </div>
+
+        <!-- Monthly Sections -->
+        <div id="calendarContainer" class="space-y-10">
+            <!-- Dynamically Loaded -->
+        </div>
+    </div>
+
+    <!-- Hidden PDF Template Header -->
+    <div id="pdf-header-template" class="hidden">
+        <div style="text-align: center; font-family: sans-serif; padding-bottom: 20px; border-bottom: 2px solid #10b981;">
+            <h1 style="margin: 0; color: #10b981; text-transform: uppercase;">2026 Gym Progress Report</h1>
+            <p style="color: #666; font-size: 12px; margin-top: 5px;">Generated on: <span id="pdf-date"></span></p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('heroCanvas');
+        const ctx = canvas.getContext('2d');
+        const quoteEl = document.getElementById('motivationQuote');
+        const calendarContainer = document.getElementById('calendarContainer');
+        
+        const quotes = [
+            "Pain is temporary. Pride is forever.",
+            "Earn your rest.",
+            "Don't wish for it. Work for it.",
+            "The body achieves what the mind believes.",
+            "Sweat is just fat crying.",
+            "Disciplined or Regretful? You choose.",
+            "Every workout is a deposit."
+        ];
+
+        // --- PDF EXPORT ---
+        async function exportResultPDF() {
+            const element = document.getElementById('capture-area');
+            const opt = {
+                margin:       [10, 10, 10, 10],
+                filename:     'Gym_Report_2026.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#050505' },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Temporary UI feedback
+            const btn = event.currentTarget;
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = "Generating PDF...";
+            btn.disabled = true;
+
+            try {
+                await html2pdf().set(opt).from(element).save();
+            } catch (err) {
+                console.error("PDF Error:", err);
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }
+        }
+
+        // --- CANVAS BACKGROUND ---
+        let particles = [];
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = 450;
+            particles = [];
+            for(let i = 0; i < 40; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 1.5 + 0.5,
+                    speed: Math.random() * 0.3 + 0.05,
+                    opacity: Math.random()
+                });
+            }
+        }
+
+        function animateCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(16, 185, 129, ${p.opacity * 0.3})`;
+                ctx.fill();
+                p.y -= p.speed;
+                if(p.y < 0) p.y = canvas.height;
+            });
+            requestAnimationFrame(animateCanvas);
+        }
+
+        // --- STORAGE & CALENDAR ---
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        
+        function loadProgress() {
+            return JSON.parse(localStorage.getItem('gymProgress2026')) || {};
+        }
+
+        function saveProgress(id, checked) {
+            const progress = loadProgress();
+            if (checked) progress[id] = true;
+            else delete progress[id];
+            localStorage.setItem('gymProgress2026', JSON.stringify(progress));
+            updateStats();
+        }
+
+        function generateCalendar() {
+            const progress = loadProgress();
+            calendarContainer.innerHTML = '';
+            
+            months.forEach((monthName, monthIndex) => {
+                const monthDiv = document.createElement('div');
+                monthDiv.className = 'month-section';
+                
+                monthDiv.innerHTML = `<h3 class="text-lg font-black mb-4 border-l-4 border-emerald-500 pl-3 uppercase italic tracking-widest text-emerald-50">${monthName}</h3>`;
+
+                const grid = document.createElement('div');
+                // Highly mobile-optimized grid (5 cols on tiny screens, 12 on large)
+                grid.className = 'grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2';
+                
+                const daysInMonth = new Date(2026, monthIndex + 1, 0).getDate();
+                
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateId = `2026-${monthIndex + 1}-${d}`;
+                    const isChecked = progress[dateId] ? 'checked' : '';
+                    
+                    const dayCard = document.createElement('div');
+                    dayCard.className = 'glass-card p-2 rounded-lg flex flex-col items-center gap-1';
+                    dayCard.innerHTML = `
+                        <span class="text-[9px] text-gray-500 font-black">${d}</span>
+                        <input type="checkbox" class="day-checkbox" id="${dateId}" ${isChecked}>
+                    `;
+                    
+                    dayCard.querySelector('input').addEventListener('change', (e) => saveProgress(dateId, e.target.checked));
+                    grid.appendChild(dayCard);
+                }
+                
+                monthDiv.appendChild(grid);
+                calendarContainer.appendChild(monthDiv);
+            });
+        }
+
+        function updateStats() {
+            const progress = loadProgress();
+            const count = Object.keys(progress).length;
+            
+            document.getElementById('statDays').innerText = count;
+            document.getElementById('statWeeks').innerText = (count / 7).toFixed(1);
+            document.getElementById('statMonths').innerText = (count / 30.44).toFixed(1);
+            document.getElementById('statYear').innerText = Math.round((count / 365) * 100) + '%';
+        }
+
+        function cycleQuotes() {
+            let i = 0;
+            setInterval(() => {
+                quoteEl.classList.add('opacity-0');
+                setTimeout(() => {
+                    quoteEl.innerText = `"${quotes[i].toUpperCase()}"`;
+                    quoteEl.classList.remove('opacity-0');
+                    i = (i + 1) % quotes.length;
+                }, 500);
+            }, 7000);
+        }
+
+        window.onload = () => {
+            initCanvas();
+            animateCanvas();
+            generateCalendar();
+            updateStats();
+            cycleQuotes();
+            
+            window.addEventListener('resize', initCanvas);
+        };
+    </script>
+</body>
+</html>
